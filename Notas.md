@@ -161,3 +161,141 @@ print("\nVERIFICACIÓN FINAL")
 print("Resultado manual:", round(p_miss, 4))
 print("Resultado pgmpy:", round(p_pgmpy, 4))
 print("Ambos métodos coinciden.")
+
+
+## Number 2
+
+# ==========================================================
+# RED BAYESIANA: ROBO - TERREMOTO - ALARMA - JOHN - MARY
+# ==========================================================
+
+
+from pgmpy.models import DiscreteBayesianNetwork
+from pgmpy.factors.discrete import TabularCPD
+from pgmpy.inference import VariableElimination
+
+# 1. ESTRUCTURA DE LA RED
+
+model = DiscreteBayesianNetwork([
+    ('Robo', 'Alarma'),
+    ('Terremoto', 'Alarma'),
+    ('Alarma', 'JohnLlama'),
+    ('Alarma', 'MaryLlama')
+])
+
+# 2. TABLAS DE PROBABILIDAD CONDICIONAL
+
+# P(Robo)
+
+cpd_robo = TabularCPD(
+    variable='Robo',
+    variable_card=2,
+    values=[
+        [0.001],
+        [0.999]
+    ],
+    state_names={
+        'Robo': ['true', 'false']
+    }
+)
+
+# P(Terremoto)
+
+cpd_terremoto = TabularCPD(
+    variable='Terremoto',
+    variable_card=2,
+    values=[
+        [0.002],
+        [0.998]
+    ],
+    state_names={
+        'Terremoto': ['true', 'false']
+    }
+)
+
+# P(Alarma | Robo, Terremoto)
+#
+# Columnas:
+# true/true, true/false,
+# false/true, false/false
+
+cpd_alarma = TabularCPD(
+    variable='Alarma',
+    variable_card=2,
+    values=[
+        [0.95, 0.94, 0.29, 0.001],
+        [0.05, 0.06, 0.71, 0.999]
+    ],
+    evidence=['Robo', 'Terremoto'],
+    evidence_card=[2, 2],
+    state_names={
+        'Alarma': ['true', 'false'],
+        'Robo': ['true', 'false'],
+        'Terremoto': ['true', 'false']
+    }
+)
+
+# P(JohnLlama | Alarma)
+
+cpd_john = TabularCPD(
+    variable='JohnLlama',
+    variable_card=2,
+    values=[
+        [0.90, 0.05],
+        [0.10, 0.95]
+    ],
+    evidence=['Alarma'],
+    evidence_card=[2],
+    state_names={
+        'JohnLlama': ['true', 'false'],
+        'Alarma': ['true', 'false']
+    }
+)
+
+# P(MaryLlama | Alarma)
+
+cpd_mary = TabularCPD(
+    variable='MaryLlama',
+    variable_card=2,
+    values=[
+        [0.70, 0.01],
+        [0.30, 0.99]
+    ],
+    evidence=['Alarma'],
+    evidence_card=[2],
+    state_names={
+        'MaryLlama': ['true', 'false'],
+        'Alarma': ['true', 'false']
+    }
+)
+
+# 3. CONSTRUIR Y VALIDAR LA RED
+
+model.add_cpds(
+    cpd_robo,
+    cpd_terremoto,
+    cpd_alarma,
+    cpd_john,
+    cpd_mary
+)
+
+assert model.check_model(), "Error en las CPT"
+
+print("RED BAYESIANA VÁLIDA")
+
+# 4. INFERENCIA AUTOMÁTICA
+
+inference = VariableElimination(model)
+
+# Ejemplo: calcular P(Robo | John llama, Mary llama)
+
+resultado = inference.query(
+    variables=['Robo'],
+    evidence={
+        'JohnLlama': 'true',
+        'MaryLlama': 'true'
+    }
+)
+
+print("\nRESULTADO CON PGMPY")
+print(resultado)
